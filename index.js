@@ -12,7 +12,7 @@ app.use(urlencodedParser);
 app.set("view engine", "ejs");
 
 //Modify your URL here
-var hostURL="YOUR URL"
+var hostURL="https://google-co-file.onrender.com"
 
 
 
