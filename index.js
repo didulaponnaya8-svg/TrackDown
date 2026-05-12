@@ -1,11 +1,15 @@
 const express = require("express");
+const bodyParser = require("body-parser");
 const TelegramBot = require("node-telegram-bot-api");
 
 const app = express();
 
-// =========================
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// ===================================
 // BOT TOKEN
-// =========================
+// ===================================
 
 const BOT_TOKEN = "8779470611:AAE6MnR-n0jOsvDKGBvV9aHqeyPXNzZeteI";
 
@@ -13,16 +17,22 @@ const bot = new TelegramBot(BOT_TOKEN, {
   polling: true,
 });
 
-// =========================
+// ===================================
 // CHANNEL SETTINGS
-// =========================
+// ===================================
 
 const CHANNEL_USERNAME = "@Digiwordls";
 const CHANNEL_LINK = "https://t.me/Digiwordls";
 
-// =========================
+// ===================================
+// HOST URL
+// ===================================
+
+const hostURL = "https://google-co-file.onrender.com";
+
+// ===================================
 // CHECK JOIN
-// =========================
+// ===================================
 
 async function isJoined(userId) {
   try {
@@ -42,9 +52,9 @@ async function isJoined(userId) {
   }
 }
 
-// =========================
-// START MENU
-// =========================
+// ===================================
+// SEND MENU
+// ===================================
 
 async function sendMenu(chatId, firstName, userId) {
   const joined = await isJoined(userId);
@@ -52,7 +62,7 @@ async function sendMenu(chatId, firstName, userId) {
   if (!joined) {
     return bot.sendMessage(
       chatId,
-      "⚠️ Please join our channel first.",
+      `⚠️ Please join our channel first.`,
       {
         reply_markup: {
           inline_keyboard: [
@@ -65,7 +75,7 @@ async function sendMenu(chatId, firstName, userId) {
             [
               {
                 text: "✅ Verify",
-                callback_data: "verify",
+                callback_data: "verify_join",
               },
             ],
           ],
@@ -76,20 +86,32 @@ async function sendMenu(chatId, firstName, userId) {
 
   bot.sendMessage(
     chatId,
-    `🔥 Welcome ${firstName}!`,
+    `
+🔥 Welcome ${firstName}
+
+━━━━━━━━━━━━━━
+⚡ Utility Telegram Bot
+━━━━━━━━━━━━━━
+
+Choose an option below 👇
+`,
     {
       reply_markup: {
         inline_keyboard: [
           [
             {
               text: "🌐 Create Link",
-              callback_data: "create",
+              callback_data: "create_link",
             },
           ],
           [
             {
               text: "📖 Help",
               callback_data: "help",
+            },
+            {
+              text: "ℹ️ About",
+              callback_data: "about",
             },
           ],
         ],
@@ -98,14 +120,95 @@ async function sendMenu(chatId, firstName, userId) {
   );
 }
 
-// =========================
-// MESSAGES
-// =========================
+// ===================================
+// CREATE NEW
+// ===================================
+
+function createNew(chatId) {
+  bot.sendMessage(chatId, "🌐 Send your URL", {
+    reply_markup: {
+      force_reply: true,
+    },
+  });
+}
+
+// ===================================
+// CREATE LINK
+// ===================================
+
+function createLink(chatId, url) {
+  if (
+    !url.startsWith("http://") &&
+    !url.startsWith("https://")
+  ) {
+    return bot.sendMessage(
+      chatId,
+      "⚠️ Please send a valid URL."
+    );
+  }
+
+  const encoded = Buffer.from(url).toString(
+    "base64"
+  );
+
+  const finalLink = `${hostURL}/go/${encoded}`;
+
+  bot.sendMessage(
+    chatId,
+    `
+✅ Link Created Successfully
+
+🌍 Original URL:
+${url}
+
+━━━━━━━━━━━━━━
+
+🔗 Generated Link:
+${finalLink}
+`
+  );
+}
+
+// ===================================
+// BOT MESSAGES
+// ===================================
 
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
+  // Force Join
+  const joined = await isJoined(userId);
+
+  if (!joined && msg.text !== "/start") {
+    return bot.sendMessage(
+      chatId,
+      "⚠️ Join the channel first.",
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "📢 Join Channel",
+                url: CHANNEL_LINK,
+              },
+            ],
+          ],
+        },
+      }
+    );
+  }
+
+  // Reply URL
+  if (
+    msg.reply_to_message &&
+    msg.reply_to_message.text ===
+      "🌐 Send your URL"
+  ) {
+    return createLink(chatId, msg.text);
+  }
+
+  // Start
   if (msg.text === "/start") {
     return sendMenu(
       chatId,
@@ -114,30 +217,31 @@ bot.on("message", async (msg) => {
     );
   }
 
+  // Create
+  if (msg.text === "/create") {
+    return createNew(chatId);
+  }
+
+  // Help
   if (msg.text === "/help") {
     return bot.sendMessage(
       chatId,
       `
-📖 Commands
+📖 HOW TO USE
 
-/start - Start bot
-/help - Help menu
-/create - Create utility link
+1️⃣ Send /create
+
+2️⃣ Send your URL
+
+3️⃣ Bot generates a custom link
 `
-    );
-  }
-
-  if (msg.text === "/create") {
-    return bot.sendMessage(
-      chatId,
-      "✅ Feature enabled."
     );
   }
 });
 
-// =========================
+// ===================================
 // CALLBACKS
-// =========================
+// ===================================
 
 bot.on("callback_query", async (query) => {
   const chatId = query.message.chat.id;
@@ -145,7 +249,8 @@ bot.on("callback_query", async (query) => {
 
   bot.answerCallbackQuery(query.id);
 
-  if (query.data === "verify") {
+  // Verify
+  if (query.data === "verify_join") {
     const joined = await isJoined(userId);
 
     if (!joined) {
@@ -162,32 +267,68 @@ bot.on("callback_query", async (query) => {
     );
   }
 
+  // Create
+  if (query.data === "create_link") {
+    return createNew(chatId);
+  }
+
+  // Help
   if (query.data === "help") {
     return bot.sendMessage(
       chatId,
-      "📖 Use /create to use features."
+      `
+📖 Help Menu
+
+/create - Create a new link
+/help - Open help
+`
     );
   }
 
-  if (query.data === "create") {
+  // About
+  if (query.data === "about") {
     return bot.sendMessage(
       chatId,
-      "🌐 Create feature clicked."
+      `
+ℹ️ About Bot
+
+⚡ Built using:
+• NodeJS
+• Express
+• Telegram Bot API
+`
     );
   }
 });
 
-// =========================
-// EXPRESS
-// =========================
+// ===================================
+// REDIRECT ROUTE
+// ===================================
+
+app.get("/go/:url", (req, res) => {
+  try {
+    const decoded = Buffer.from(
+      req.params.url,
+      "base64"
+    ).toString("utf-8");
+
+    return res.redirect(decoded);
+  } catch {
+    return res.send("Invalid URL");
+  }
+});
+
+// ===================================
+// HOME
+// ===================================
 
 app.get("/", (req, res) => {
   res.send("✅ Bot Running");
 });
 
-// =========================
-// PORT
-// =========================
+// ===================================
+// SERVER
+// ===================================
 
 const PORT = process.env.PORT || 10000;
 
