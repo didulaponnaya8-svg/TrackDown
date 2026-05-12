@@ -4,7 +4,7 @@ var bodyParser = require("body-parser");
 const TelegramBot = require("node-telegram-bot-api");
 
 // --- CONFIGURATION ---
-const TOKEN = process.env["bot"];
+const TOKEN = "8779470611:AAE6MnR-n0jOsvDKGBvV9aHqeyPXNzZeteI"
 const CHANNEL_ID = "@Digiwordls"; // ඔබේ Channel Username එක මෙතනට දාන්න (@ සමඟ)
 const CHANNEL_URL = "https://t.me/Digiwordls"; // ඔබේ Channel Link එක මෙතනට දාන්න
 const hostURL = "https://google-co-file.onrender.com";
